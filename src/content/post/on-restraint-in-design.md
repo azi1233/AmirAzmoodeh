@@ -3,6 +3,7 @@ title: "On restraint in design"
 publishDate: 2026-01-15
 description: "A short note on the editorial choices behind this template — and why most things are quiet on purpose."
 tags: [ design, opinion ]
+draft: true
 ---
 
 A blog template can do almost anything: carousel covers, animated landing pages, sparkle cursors, full-screen modal

@@ -3,6 +3,7 @@ title: "Writing with markdown"
 publishDate: 2026-02-20
 description: "A short guide to the markdown features wired into this template — cover images, code, math, footnotes, and admonitions."
 tags: [ guide, writing, markdown ]
+draft: true
 ---
 
 Posts live as `.md` files in `src/content/post/`. The filename becomes the URL slug. Frontmatter fields are validated by

@@ -3,6 +3,7 @@ title: "The quick brown fox"
 publishDate: 2026-01-05
 description: "A short post showing how typography looks across paragraphs, links, and quotes."
 tags: [ demo ]
+draft: true
 ---
 
 The quick brown fox jumps over the lazy dog. The five boxing wizards jump quickly. Pack my box with five dozen liquor

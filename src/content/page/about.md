@@ -9,6 +9,6 @@ I enjoy exploring ideas, understanding how things work, and turning what I learn
 
 I hold both a B.Sc. and an M.Sc. in Electrical Engineering, specializing in Communication Systems, from **Sharif University of Technology**. Over the past six years, I've been working in networking, software development, designing, operating, and troubleshooting network infrastructure while continuing to learn beyond my day-to-day work.
 
-My interests extend well beyond technology. I enjoy reading about economics, history, and psychology, and I'm fascinated by how ideas, systems, and people influence one another. Outside of work, I value spending time with family and friends, meaningful conversations, and the simple moments that keep life balanced.
+My interests extend well beyond technology. I enjoy reading about self-development, history, and politics, and I'm fascinated by how ideas, systems, and people influence one another. Outside of work, I value spending time with family and friends, meaningful conversations, and the simple moments that keep life balanced.
 
 This website is my digital notebook — a place to share projects, technical notes, and ideas that I find worth exploring.
