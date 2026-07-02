@@ -12,7 +12,7 @@ export const siteConfig: SiteConfig = {
 		},
 	},
 	description:
-		"Exploring networking, distributed systems, software engineering, AI, people and the ideas that connect them.",
+		"Amir's thoughts on exploring networking, distributed systems, software engineering, AI, people and the ideas that connect them.",
 	lang: "en-US",
 	ogLocale: "en_US",
 	sortPostsByUpdatedDate: false,
