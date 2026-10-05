@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Content Manager — Network is Reachable</title>
+
+		<!-- Load the config relative to this page so it works under the GitHub
+		     Pages base path (e.g. /AmirAzmoodeh/admin/config.yml). -->
+		<link href="config.yml" type="text/yaml" rel="cms-config-url" />
+
+		<!-- Preview-only font approximation: the site self-hosts the variable
+		     fonts via npm; Google Fonts is used here so the preview pane renders
+		     with the same families. -->
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+			rel="stylesheet"
+		/>
+	</head>
+	<body>
+		<!-- Decap auto-mounts into `document.body`, so these scripts MUST NOT sit
+		     in <head>: a classic script there runs before <body> is parsed and the
+		     mount fails with "Cannot read properties of null (reading
+		     'appendChild')". Keep them as the first children of <body>. -->
+		<script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+		<script src="https://unpkg.com/marked@^12/marked.min.js"></script>
+
+		<script>
+			// Design tokens copied from src/styles/global.css — light + dark
+			// variants gate on [data-theme] exactly like the site does.
+			var PREVIEW_STYLES = `
+				html, body { margin: 0; padding: 0; }
+				body { background: hsl(var(--theme-bg)); color: hsl(var(--theme-text)); transition: background-color .35s ease, color .35s ease; }
+				.preview-wrap { max-width: 760px; margin: 0 auto; padding: 36px 32px 80px; }
+				:root, :root[data-theme="light"] {
+					color-scheme: light;
+					--theme-bg: 37deg 47% 93%;
+					--theme-text: 28deg 16% 13%;
+					--theme-text-muted: 25deg 14% 26%;
+					--theme-accent: 17deg 60% 34%;
+					--theme-accent-2: 28deg 16% 13%;
+					--theme-link: 17deg 60% 34%;
+					--theme-quote: 17deg 60% 34%;
+					--paper: #fbf6ec;
+					--hairline: #d9cfb9;
+					--faint: #b8ad9b;
+					--accent-soft: rgba(138, 68, 35, 0.1);
+					--accent-soft-strong: rgba(138, 68, 35, 0.18);
+					--font-serif: "Newsreader", Georgia, serif;
+					--font-sans: "Inter", -apple-system, system-ui, sans-serif;
+					--font-mono: "JetBrains Mono", ui-monospace, monospace;
+					--reading-width: 64ch;
+				}
+				:root[data-theme="dark"] {
+					color-scheme: dark;
+					--theme-bg: 20deg 9% 7%;
+					--theme-text: 42deg 35% 92%;
+					--theme-text-muted: 36deg 18% 73%;
+					--theme-accent: 30deg 49% 59%;
+					--theme-accent-2: 42deg 35% 92%;
+					--theme-link: 30deg 49% 59%;
+					--theme-quote: 30deg 49% 59%;
+					--paper: #1a1715;
+					--hairline: #2a2622;
+					--faint: #4f4a42;
+					--accent-soft: rgba(200, 151, 97, 0.12);
+					--accent-soft-strong: rgba(200, 151, 97, 0.22);
+					--font-serif: "Newsreader", Georgia, serif;
+					--font-sans: "Inter", -apple-system, system-ui, sans-serif;
+					--font-mono: "JetBrains Mono", ui-monospace, monospace;
+					--reading-width: 64ch;
+				}
+
+				/* Article typography — mirrors src/layouts/BlogPost.astro */
+				.post-article { font-family: var(--font-serif); color: hsl(var(--theme-text)); line-height: 1.75; }
+				.post-article p { font-size: 17.5px; line-height: 1.75; color: hsl(var(--theme-text)); margin: 0 0 24px; max-width: var(--reading-width); }
+				.post-article h1 { font-family: var(--font-serif); font-weight: 500; font-size: 38px; line-height: 1.1; letter-spacing: -0.022em; color: hsl(var(--theme-text)); margin: 0 0 12px; }
+				.post-article h2 { font-family: var(--font-serif); font-weight: 500; font-size: 27px; line-height: 1.22; letter-spacing: -0.014em; color: hsl(var(--theme-text)); margin: 56px 0 20px; }
+				.post-article h3 { font-family: var(--font-serif); font-weight: 500; font-style: italic; font-size: 20px; line-height: 1.3; color: hsl(var(--theme-text)); margin: 38px 0 14px; }
+				.post-article h4 { font-family: var(--font-serif); font-weight: 500; font-size: 17.5px; line-height: 1.35; color: hsl(var(--theme-text)); margin: 30px 0 12px; }
+				.post-article .eyebrow { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: hsl(var(--theme-text) / .55); margin-bottom: 18px; }
+				.post-article .byline { font-family: var(--font-serif); font-style: italic; font-size: 16.5px; color: hsl(var(--theme-text-muted)); margin: 0 0 14px; }
+				.post-article .tags { font-family: var(--font-mono); font-size: 11.5px; color: hsl(var(--theme-text) / .55); margin-bottom: 28px; }
+				.post-article .tags span { display: inline-block; margin-right: 8px; }
+				.post-article .cover { display: block; width: 100%; max-height: 380px; object-fit: cover; border: 1px solid var(--hairline); border-radius: 4px; background: var(--paper); margin: 0 0 36px; }
+				.post-article a { color: hsl(var(--theme-text)); text-decoration: underline; text-decoration-color: hsl(var(--theme-text) / .35); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+				.post-article:not(pre) > code, .post-article :not(pre) > code { font-family: var(--font-mono); font-size: 14.5px; background: var(--paper); border: 1px solid var(--hairline); padding: 1px 6px; border-radius: 3px; color: hsl(var(--theme-text-muted)); }
+				.post-article pre { background: var(--paper); border: 1px solid var(--hairline); border-radius: 4px; padding: 16px; overflow-x: auto; font-size: 14px; line-height: 1.7; }
+				.post-article pre code { background: transparent; border: 0; padding: 0; font-family: var(--font-mono); color: hsl(var(--theme-text-muted)); }
+				.post-article ul, .post-article ol { margin: 0 0 28px; max-width: var(--reading-width); padding-left: 22px; }
+				.post-article li { font-size: 17.5px; line-height: 1.7; color: hsl(var(--theme-text)); margin-bottom: 10px; }
+				.post-article blockquote { margin: 28px 0; padding: 4px 0 4px 22px; border-left: 2px solid hsl(var(--theme-accent)); font-style: italic; color: hsl(var(--theme-text-muted)); font-size: 18px; line-height: 1.65; }
+				.post-article img { display: block; max-width: 100%; height: auto; border: 1px solid var(--hairline); background: var(--paper); }
+				.post-article table { width: 100%; border-collapse: collapse; font-size: 15.5px; font-family: var(--font-sans); margin: 28px 0; }
+				.post-article th, .post-article td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--hairline); }
+				.post-article hr { border: 0; height: 1px; background: var(--hairline); margin: 40px 0; }
+
+				@media (max-width: 720px) { .preview-wrap { padding: 24px 20px 60px; } .post-article p, .post-article li { font-size: 17px; } }
+			`;
+
+			function renderMarkdown(src) {
+				if (!src) return "";
+				var md = window.marked;
+				return md && typeof md.parse === "function"
+					? md.parse(src)
+					: typeof md === "function"
+						? md(src)
+						: "";
+			}
+
+			// Borrow the site's theme choice (ThemeProvider stores it under "theme").
+			var activeTheme = "light";
+			try {
+				activeTheme =
+					localStorage.getItem("theme") ||
+					(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+			} catch {} // localStorage may be unavailable in the preview iframe
+
+			// Decap stores uploads under public_folder "/images", which is
+			// root-relative. On a subpath host (GitHub Pages project sites) that
+			// 404s, so derive the deploy base from this page's own location —
+			// mirroring src/utils/path.ts.
+			var BASE = window.location.pathname.replace(/\/admin\/?$/, "").replace(/\/+$/, "");
+
+			function withBase(path) {
+				if (!path) return path;
+				if (/^(?:[a-z][a-z\d+.-]*:)?\/\//i.test(path)) return path;
+				return BASE + (path.startsWith("/") ? path : "/" + path);
+			}
+
+			function previewHtml(data) {
+				const tags =
+					Array.isArray(data.tags) && data.tags.length
+						? `<div class="tags">${data.tags.map((t) => `<span>${t}</span>`).join("")}</div>`
+						: "";
+				const imgSrc = data.coverImage?.src
+					? withBase(String(data.coverImage.src)).replace(/"/g, "&quot;")
+					: "";
+				const imgAlt = String(data.coverImage?.alt || "").replace(/"/g, "&quot;");
+				const cover = imgSrc ? `<img class="cover" src="${imgSrc}" alt="${imgAlt}" />` : "";
+				const pub = data.publishDate
+					? new Date(data.publishDate).toLocaleDateString("en-US", {
+							year: "numeric",
+							month: "short",
+							day: "numeric",
+						})
+					: "";
+
+				return (
+					`<!doctype html><html data-theme="${activeTheme}"><head><meta charset="utf-8"/>` +
+					`<style>${PREVIEW_STYLES}</style></head><body>` +
+					`<div class="preview-wrap"><article class="post-article">` +
+					`<div class="eyebrow">Posts · ${pub || ""}</div>` +
+					`<h1>${data.title || ""}</h1>` +
+					`<p class="byline">By AmirReza Azmoodeh${pub ? ` · ${pub}` : ""}</p>` +
+					`${tags}${cover}` +
+					`${renderMarkdown(data.body)}` +
+					`</article></div></body></html>`
+				);
+			}
+
+			window.addEventListener("DOMContentLoaded", () => {
+				if (!window.CMS) return;
+				window.CMS.registerPreviewTemplate("post", (args) => {
+					// Supports both call signatures: fn(entry, widgetFor) and fn({ entry, ... }).
+					const entry = args?.entry ?? args;
+					const data = entry?.get?.("data") ? entry.get("data").toJS() : {};
+					return previewHtml(data);
+				});
+			});
+		</script>
+	</body>
+</html>

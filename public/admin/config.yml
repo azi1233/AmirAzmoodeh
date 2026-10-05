@@ -1,0 +1,105 @@
+# Decap CMS configuration — https://decapcms.org/docs/
+#
+# Behind "Login with GitHub" this site uses Netlify's free OAuth proxy
+# (https://api.netlify.com). The site itself stays on GitHub Pages — only the
+# OAuth handshake goes through Netlify.
+#
+# REQUIRED MANUAL SETUP (you do this in browser, then come back):
+#   1. GitHub OAuth App   — Settings → Developer settings → OAuth Apps → New
+#      OAuth App. Authorization callback URL MUST be:
+#          https://api.netlify.com/auth/done
+#      Copy the Client ID and generate a Client Secret afterwards.
+#   2. Netlify site (used only as the auth relay) — app.netlify.com → Add new
+#      site (any blank site). Set a Site name, e.g. "amirmoodeh-cms-auth".
+#      Then: Site configuration → Access & security → OAuth → Install provider
+#      → GitHub → paste the Client ID + Client Secret.
+#   3. Copy that site's "Project ID" (site settings, labelled Site ID in the
+#      API) and paste it below in `site_id`.
+
+backend:
+  name: github
+  repo: azi1233/AmirAzmoodeh
+  branch: main
+  base_url: https://api.netlify.com
+  auth_endpoint: auth
+  site_id: "REPLACE_WITH_NETLIFY_PROJECT_ID"
+
+# Editorial workflow is intentionally OFF. With the "github" backend it would
+# funnel every post through a GitHub branch + pull request (saving creates a PR,
+# publishing merges it). For a single-author site that already uses the
+# frontmatter `draft` field to keep unpublished posts out of production, that
+# extra review loop only adds friction on a phone. Direct commits = hit save,
+# your existing GitHub Actions workflow builds and deploys. If you later want a
+# review step for co-authors, add this line at the top level:
+#   publish_mode: editorial_workflow
+
+site_url: https://azi1233.github.io/AmirAzmoodeh/
+display_url: https://azi1233.github.io/AmirAzmoodeh/
+locale: en
+
+# Uploads land in public/images/ and are referenced as /images/... from posts.
+# The markdown body is rewritten to use the base path automatically at build
+# time by the template's rehype-base-path plugin.
+media_folder: public/images
+public_folder: /images
+
+collections:
+  - name: "post"
+    label: "Posts"
+    label_singular: "Post"
+    folder: "src/content/post"
+    create: true
+    delete: true
+    extension: md
+    format: frontmatter
+    slug: "{{slug}}"
+    summary: "{{title}} — {{publishDate}}"
+    sortable_fields: [publishDate, title]
+    view_groups:
+      - label: "Year"
+        field: publishDate
+    fields:
+      - { label: "Title", name: "title", widget: "string", required: true }
+      - label: "Publish Date"
+        name: "publishDate"
+        widget: "datetime"
+        required: true
+      - label: "Updated Date"
+        name: "updatedDate"
+        widget: "datetime"
+        required: false
+      - label: "Description"
+        name: "description"
+        widget: "text"
+        required: true
+        hint: "One-sentence summary used in cards and meta tags (10–160 characters)."
+      - label: "Tags"
+        name: "tags"
+        widget: "list"
+        required: false
+        default: []
+      - label: "Draft (hidden from production)"
+        name: "draft"
+        widget: "boolean"
+        required: false
+        default: false
+      # NOTE: coverImage itself is optional, so its inner fields must NOT be
+      # `required: true`. Decap validates the inner fields even when the whole
+      # object is absent, which makes every save fail with
+      # "Image is required. / Alt text are required." for posts that have no
+      # cover image. The "required" here only means: fill these in *if* you add
+      # a cover image at all.
+      - label: "Cover Image"
+        name: "coverImage"
+        widget: "object"
+        required: false
+        collapsed: true
+        fields:
+          - { label: "Image", name: "src", widget: "image", required: false, choose_url: false }
+          - { label: "Alt text", name: "alt", widget: "string", required: false }
+      - label: "OG Image (optional override)"
+        name: "ogImage"
+        widget: "image"
+        required: false
+        choose_url: true
+      - { label: "Body", name: "body", widget: "markdown" }

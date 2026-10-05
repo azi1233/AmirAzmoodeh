@@ -31,7 +31,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Detects the base path ("/<repo>" or "/") and enables Pages.
+      - run: pnpm lint
+
+      # Configure Pages first so the detected base path is available below.
       - name: Configure Pages
         id: pages
         uses: actions/configure-pages@v5
@@ -41,6 +43,11 @@ jobs:
       # `pnpm build` runs `astro check && astro build`, then the
       # `postbuild` script runs pagefind over dist/.
       - run: pnpm build
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+
+      # Last gate before publish: base paths, required files, draft leaks.
+      - run: pnpm check:build
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}
 

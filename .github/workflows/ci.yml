@@ -1,17 +1,21 @@
 name: CI
 
+# Pull requests only. Pushes to `main` are covered by deploy.yml, which lints
+# before it builds — running both here used to build every push twice.
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
-    name: Lint & build
+  check:
+    name: Lint, build & verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,4 +29,15 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - run: pnpm lint
+
+      # Build with the production base path so the checks below exercise the
+      # same output that gets deployed. Without BASE_PATH the site builds for
+      # "/" and every internal link silently loses its prefix.
       - run: pnpm build
+        env:
+          BASE_PATH: /AmirAzmoodeh
+
+      - run: pnpm check:build
+        env:
+          BASE_PATH: /AmirAzmoodeh

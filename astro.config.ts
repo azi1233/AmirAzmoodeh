@@ -25,9 +25,11 @@ import rehypeUnwrapImages from "rehype-unwrap-images";
 // (GitHub Pages project sites). See "Base path" in the README.
 const BASE_PATH = process.env.BASE_PATH || "/";
 const START_URL = BASE_PATH.endsWith("/") ? BASE_PATH : `${BASE_PATH}/`;
+// Override for forks/renames. The default is this site's canonical origin.
+const SITE_URL = process.env.SITE_URL || "https://azi1233.github.io";
 
 export default defineConfig({
-	site: "https://azi1233.github.io",
+	site: SITE_URL,
 	base: BASE_PATH,
 	image: {
 		domains: ["webmention.io"],
@@ -88,6 +90,7 @@ export default defineConfig({
 			},
 		}),
 		(await import("@playform/compress")).default(),
+		stripLocalCmsFiles(),
 	],
 	markdown: {
 		rehypePlugins: [
@@ -120,6 +123,27 @@ export default defineConfig({
 		plugins: [rawFonts([".ttf", ".woff"])],
 	},
 });
+
+/**
+ * The local Decap CMS files live in `public/admin/` so `pnpm dev` can serve
+ * them, which means Astro also copies them into `dist/`. `.gitignore` keeps
+ * them out of git but does nothing about the build output, so remove them
+ * after the build: they point a browser at a proxy that only exists on the
+ * developer's own machine.
+ */
+function stripLocalCmsFiles() {
+	const localOnly = ["admin/local.html", "admin/config.local.yml"];
+	return {
+		name: "strip-local-cms-files",
+		hooks: {
+			"astro:build:done": ({ dir }: { dir: URL }) => {
+				for (const file of localOnly) {
+					fs.rmSync(new URL(file, dir), { force: true });
+				}
+			},
+		},
+	};
+}
 
 function rawFonts(ext: string[]) {
 	return {

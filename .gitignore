@@ -26,3 +26,7 @@ pnpm-debug.log*
 .idea
 temp/
 MyNotes
+
+# Decap CMS local-only setup (git proxy; must never be deployed)
+public/admin/local.html
+public/admin/config.local.yml

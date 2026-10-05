@@ -108,15 +108,25 @@ const giscusThemes = import.meta.env.PROD
 
 			{coverImage ? (
 				<figure class="post-cover">
-					<Image
-						src={coverImage.src}
-						alt={coverImage.alt}
-						loading="eager"
-						fetchpriority="high"
-						decoding="async"
-						widths={[480, 720, 960, 1280]}
-						sizes="(max-width: 720px) 92vw, 696px"
-					/>
+					{typeof coverImage.src === "string" ? (
+						<img
+							src={withBase(coverImage.src)}
+							alt={coverImage.alt}
+							loading="eager"
+							fetchpriority="high"
+							decoding="async"
+						/>
+					) : (
+						<Image
+							src={coverImage.src}
+							alt={coverImage.alt}
+							loading="eager"
+							fetchpriority="high"
+							decoding="async"
+							widths={[480, 720, 960, 1280]}
+							sizes="(max-width: 720px) 92vw, 696px"
+						/>
+					)}
 				</figure>
 			) : (
 				<hr class="rule" />
