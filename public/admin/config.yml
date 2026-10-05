@@ -22,7 +22,8 @@ backend:
   branch: main
   base_url: https://api.netlify.com
   auth_endpoint: auth
-  site_id: "REPLACE_WITH_NETLIFY_PROJECT_ID"
+  site_id: "66b4f6f7-4875-4815-bfa3-3242fa5b39f9"
+  #site_id: "REPLACE_WITH_NETLIFY_PROJECT_ID"
 
 # Editorial workflow is intentionally OFF. With the "github" backend it would
 # funnel every post through a GitHub branch + pull request (saving creates a PR,
