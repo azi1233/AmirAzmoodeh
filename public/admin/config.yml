@@ -4,7 +4,7 @@
 # (https://api.netlify.com). The site itself stays on GitHub Pages — only the
 # OAuth handshake goes through Netlify.
 #
-# REQUIRED MANUAL SETUP (you do this in browser, then come back):
+# MANUAL SETUP (completed for this site — kept as a record):
 #   1. GitHub OAuth App   — Settings → Developer settings → OAuth Apps → New
 #      OAuth App. Authorization callback URL MUST be:
 #          https://api.netlify.com/auth/done
@@ -14,7 +14,18 @@
 #      Then: Site configuration → Access & security → OAuth → Install provider
 #      → GitHub → paste the Client ID + Client Secret.
 #   3. Copy that site's "Project ID" (site settings, labelled Site ID in the
-#      API) and paste it below in `site_id`.
+#      API) and paste it below in `site_domain`.
+#
+# ⚠ THE KEY IS `site_domain`, NOT `site_id` — this is a trap.
+#   Decap's login page reads only `backend.site_domain`. The shipped
+#   decap-cms.js contains ZERO references to `backend.site_id`, so a `site_id:`
+#   key is silently ignored. Its helper then falls back to the browser's own
+#   hostname, producing this request:
+#       https://api.netlify.com/auth?provider=github
+#         &site_id=azi1233.github.io&scope=repo
+#   which Netlify rejects with a bare "Not Found". The misleading part: the
+#   `site_domain` NAME takes a Netlify Project ID (a UUID) as its VALUE — the
+#   name is a leftover in Decap's code, not a hint about the format.
 
 backend:
   name: github
@@ -22,8 +33,7 @@ backend:
   branch: main
   base_url: https://api.netlify.com
   auth_endpoint: auth
-  site_id: "66b4f6f7-4875-4815-bfa3-3242fa5b39f9"
-  #site_id: "REPLACE_WITH_NETLIFY_PROJECT_ID"
+  site_domain: "66b4f6f7-4875-4815-bfa3-3242fa5b39f9"
 
 # Editorial workflow is intentionally OFF. With the "github" backend it would
 # funnel every post through a GitHub branch + pull request (saving creates a PR,

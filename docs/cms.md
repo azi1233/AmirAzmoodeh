@@ -174,6 +174,10 @@ special characters.
 | The `.md` file changed but `git log` shows nothing  | Commit it yourself: `git add -A && git commit`. Nothing is lost either way.      |
 | A post does not show on the live site               | It is still Draft, or you have not run `git push`.                               |
 | A post shows a 404 link                             | The filename changed. The address is the filename without `.md`.                 |
+| `/admin/` is 404 on the live site                   | Nothing is deployed there yet. Check the Actions tab — a failed build never uploads. |
+| "Not Found" after clicking Login with GitHub       | The Netlify address ends in `site_id=azi1233.github.io`, not your Project ID. `config.yml` says `site_id:` where Decap needs `site_domain:`. See Step C. |
+| "Not Found" but the address looks right             | The OAuth app callback URL is not exactly `https://api.netlify.com/auth/done`, or the GitHub OAuth provider is not installed on the Netlify site. |
+| Login opens, then the site asks to log in again     | Expected the first time. After approving, it returns to the CMS automatically.  |
 
 ---
 
@@ -243,17 +247,30 @@ Now give Netlify the codes:
 1. In Netlify, open **Site settings**. Copy the value labelled **Project ID**
    (the API calls it Site ID).
 2. In this project, open `public/admin/config.yml`.
-3. Find line 25:
+3. Find the placeholder line inside the `backend:` block:
 
    ```yaml
-   site_id: "REPLACE_WITH_NETLIFY_PROJECT_ID"
+   site_domain: "REPLACE_WITH_NETLIFY_PROJECT_ID"
    ```
 
 4. Put your ID between the quotes:
 
    ```yaml
-   site_id: "b8f3a1c2-4d5e-6789-abcd-ef0123456789"
+   site_domain: "b8f3a1c2-4d5e-6789-abcd-ef0123456789"
    ```
+
+> **Careful: the key is `site_domain`, not `site_id`.**
+>
+> This is the one confusing part of the whole setup. Decap's login page reads
+> only `backend.site_domain` — the string `backend.site_id` does not appear
+> anywhere in the Decap code. If you write `site_id:`, Decap does not complain.
+> It quietly ignores the key and falls back to your browser's own hostname, so
+> the "Login with GitHub" button opens a Netlify address containing
+> `site_id=azi1233.github.io` instead of your Project ID. Netlify answers with
+> a bare **"Not Found"**.
+>
+> The name is misleading: the **value** is a Netlify Project ID (a UUID), not
+> a domain. That is just how Decap's code is written.
 
 5. Save the file and push:
 
@@ -263,8 +280,19 @@ Now give Netlify the codes:
    git push
    ```
 
-Now open <https://azi1233.github.io/AmirAzmoodeh/admin/> and click
-**Login with GitHub**.
+6. Wait for the deploy to finish, then **hard-refresh** `/admin/`
+   (`Ctrl+Shift+R`). GitHub Pages caches hard, so a normal refresh can keep
+   showing the old config and the "Not Found" for a while.
+
+To check it worked, open
+<https://azi1233.github.io/AmirAzmoodeh/admin/config.yml> and confirm it says
+`site_domain`. Then click **Login with GitHub** — you should reach GitHub's
+authorization screen, where you approve your own OAuth app.
+
+If you ever need to undo this, comment out the `site_domain:` line. The
+production editor then shows a "Login with GitHub" button that cannot work,
+which is harmless; the local editor at `/admin/local.html` is unaffected either
+way because it uses `local_backend` and never reads this key.
 
 ### What publishing does on production
 
