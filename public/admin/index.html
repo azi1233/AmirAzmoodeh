@@ -20,10 +20,153 @@
 		/>
 	</head>
 	<body>
+		<!--
+			GitHub login helper (PRODUCTION ONLY — local.html does not use GitHub).
+
+			Decap logs in through a popup: api.netlify.com → github.com →
+			api.netlify.com/auth/done. That last page cannot store a token by
+			itself. It has to postMessage() back to this tab, and this tab has to
+			reply once. Three cross-origin hops:
+
+			  1. popup  → this tab   "authorizing:github"
+			  2. this tab → popup   "authorizing:github"          (Decap's echo)
+			  3. popup  → this tab   "authorization:github:success:{token}"
+
+			Two failure modes are handled here.
+
+			a) Decap opens the popup with a FIXED WINDOW NAME:
+			     window.open(url, "Netlify Authorization", …)
+			     window.open() REUSES an existing window with that name. So a popup
+			     left over from an earlier attempt silently steals the new one, and
+			     a reused window has no opener link to the current tab. Hops 1 and 2
+			     then go nowhere while Netlify still shows "Authorized" — the CMS
+			     just spins forever. Dropping the name forces a fresh popup.
+
+			b) If the chain breaks for any other reason, Decap gives no message at
+			   all. The panel below reports which hop arrived, in the page, so no
+			   DevTools round-trip is needed to find out what happened.
+		-->
+		<script>
+			(function () {
+				var NETLIFY = "https://api.netlify.com";
+				var hops = { opened: false, calledBack: false, token: false };
+				var watchdog = null;
+				var panel = null;
+
+				// (a) Intercept ONLY Netlify's auth popup, and only to drop the
+				// window name. Every other window.open call is passed straight on.
+				var realOpen = window.open;
+				window.open = function (url) {
+					if (typeof url === "string" && url.indexOf(NETLIFY + "/auth") === 0) {
+						hops = { opened: true, calledBack: false, token: false };
+						hidePanel();
+						console.log("[cms login] popup opened — fresh window, name dropped");
+						clearTimeout(watchdog);
+						// If Netlify never calls back, the opener link is dead. Say so
+						// instead of leaving an unexplained spinner on screen.
+						watchdog = setTimeout(function () {
+							if (!hops.calledBack) {
+								fail(
+									"The Netlify window never called back to this tab.",
+									"Close every popup window, allow popups for this site, then reload and try again."
+								);
+							}
+						}, 30000);
+						return realOpen.call(window, url, "", arguments[2]);
+					}
+					return realOpen.apply(window, arguments);
+				};
+
+				// (b) Record the hops. Every message Decap accepts comes from
+				// api.netlify.com and nothing else, so anything else is ignored.
+				window.addEventListener(
+					"message",
+					function (event) {
+						if (event.origin !== NETLIFY) return;
+						var data = typeof event.data === "string" ? event.data : "";
+						if (data.indexOf("authorizing:") === 0) {
+							hops.calledBack = true;
+							clearTimeout(watchdog);
+							console.log("[cms login] hop 1 OK — Netlify called back, this tab replies");
+						} else if (data.indexOf("authorization:github:success:") === 0) {
+							hops.token = true;
+							clearTimeout(watchdog);
+							console.log("[cms login] hop 3 OK — token received");
+						} else if (data.indexOf("authorization:github:error:") === 0) {
+							clearTimeout(watchdog);
+							fail(
+								"GitHub refused the authorization.",
+								readError(data.slice("authorization:github:error:".length))
+							);
+						}
+					},
+					false
+				);
+
+				// The reply body is JSON, so slicing on ":" would cut through it and
+				// leak raw braces. Parse it, and fall back to the raw text if it is
+				// not valid JSON.
+				function readError(body) {
+					var parsed;
+					try {
+						parsed = JSON.parse(body);
+					} catch {
+						return body.slice(0, 160);
+					}
+					return parsed.message || parsed.error_description || parsed.error || body;
+				}
+
+				function fail(headline, detail) {
+					var steps = [
+						"Popup opened: " + (hops.opened ? "yes" : "no"),
+						"Netlify called back: " + (hops.calledBack ? "yes" : "no"),
+						"Token received: " + (hops.token ? "yes" : "no"),
+					];
+					showPanel(headline, detail, steps);
+				}
+
+				function showPanel(headline, detail, steps) {
+					if (!panel) {
+						panel = document.createElement("div");
+						panel.setAttribute("role", "status");
+						panel.style.cssText = [
+							"position:fixed",
+							"z-index:9999",
+							"right:16px",
+							"bottom:16px",
+							"max-width:340px",
+							"padding:16px 18px",
+							"border-radius:6px",
+							"border:1px solid #b4472e",
+							"background:#2a1a15",
+							"color:#fbeee6",
+							"font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace",
+							"box-shadow:0 8px 28px rgba(0,0,0,.35)",
+						].join(";");
+						document.body.appendChild(panel);
+					}
+					var html = "<strong style='display:block;font-size:14px;margin-bottom:8px'>" + headline + "</strong>";
+					if (steps) {
+						html +=
+							"<ul style='margin:0 0 10px;padding-left:18px'>" +
+							steps.map(function (s) { return "<li>" + s + "</li>"; }).join("") +
+							"</ul>";
+					}
+					if (detail) html += "<div style='opacity:.85'>" + detail + "</div>";
+					panel.innerHTML = html;
+				}
+
+				function hidePanel() {
+					if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+					panel = null;
+				}
+			})();
+		</script>
+
 		<!-- Decap auto-mounts into `document.body`, so these scripts MUST NOT sit
 		     in <head>: a classic script there runs before <body> is parsed and the
 		     mount fails with "Cannot read properties of null (reading
-		     'appendChild')". Keep them as the first children of <body>. -->
+		     'appendChild')". Keep them inside <body>, as its first elements. -->
 		<script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
 		<script src="https://unpkg.com/marked@^12/marked.min.js"></script>
 

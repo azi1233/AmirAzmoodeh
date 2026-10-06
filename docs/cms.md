@@ -177,6 +177,7 @@ special characters.
 | `/admin/` is 404 on the live site                   | Nothing is deployed there yet. Check the Actions tab — a failed build never uploads. |
 | "Not Found" after clicking Login with GitHub       | The Netlify address ends in `site_id=azi1233.github.io`, not your Project ID. `config.yml` says `site_id:` where Decap needs `site_domain:`. See Step C. |
 | "Not Found" but the address looks right             | The OAuth app callback URL is not exactly `https://api.netlify.com/auth/done`, or the GitHub OAuth provider is not installed on the Netlify site. |
+| The Netlify popup says "Authorized" but the CMS never changes | The popup could not message the CMS tab. Close every popup window, allow popups, reload, retry. A dark box in the bottom-right corner explains exactly which step failed — see "If the login window opens but nothing happens". |
 | Login opens, then the site asks to log in again     | Expected the first time. After approving, it returns to the CMS automatically.  |
 
 ---
@@ -293,6 +294,46 @@ If you ever need to undo this, comment out the `site_domain:` line. The
 production editor then shows a "Login with GitHub" button that cannot work,
 which is harmless; the local editor at `/admin/local.html` is unaffected either
 way because it uses `local_backend` and never reads this key.
+
+### If the login window opens but nothing happens
+
+This one has a short answer. After you approve on GitHub, Netlify shows a small
+page saying **"Authorized"**. That page cannot save your login by itself — it
+has to send a message back to the CMS tab, and the CMS tab has to reply once.
+Three steps, all between two browser windows:
+
+```
+1  popup → CMS tab     "authorizing:github"
+2  CMS tab → popup     "authorizing:github"        (Decap's reply)
+3  popup → CMS tab     "authorization:github:success:{token}"
+```
+
+If any step fails, Decap has no error message — it just sits there. So the page
+now tells you what happened instead of waiting forever. A small dark box appears
+in the bottom-right corner:
+
+| The box says                | What it means                                    | What to do                                                                 |
+| --------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------- |
+| "never called back"         | Step 1 failed. The popup cannot reach the CMS tab. | Close **every** popup window, allow popups for this site, reload, try again. |
+| "GitHub refused..."         | GitHub declined, or the OAuth app is wrong.       | Read the message in the box.                                                   |
+| "Token received: no"        | The token arrived but the CMS could not use it.   | Open DevTools → Network and redo it; report the red `api.netlify.com` request. |
+
+Two things this page does for you behind the scenes:
+
+- **It opens a fresh popup every time.** Decap asks for a window with the fixed
+  name `Netlify Authorization`, and browsers reuse any window that already has
+  that name. A leftover popup from an earlier attempt therefore steals the new
+  one, and a reused window has no link back to your tab — so step 1 and step 2
+  go nowhere while Netlify still cheerfully says "Authorized". Dropping the
+  window name removes that whole class of bug.
+- **It waits 30 seconds.** If step 1 never arrives, you get the box instead of an
+  unexplained spinner.
+
+Everything it logs also appears in the browser console with the prefix
+`[cms login]`, if you prefer to look there.
+
+This helper only affects the production login. `/admin/local.html` never uses
+GitHub, so local writing is untouched.
 
 ### What publishing does on production
 
