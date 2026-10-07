@@ -1,2 +1,20 @@
 [build]
-  command = 'pnpm build'
+  command = "pnpm build"
+  publish = "dist"
+
+[build.environment]
+  # Keep base path unset so the CMS/admin and assets work at the root
+  # when deployed to the Netlify auth site. GitHub Pages still uses BASE_PATH
+  # via the Actions workflow.
+  BASE_PATH = ""
+
+# Ensure the admin path resolves cleanly on Netlify
+[[redirects]]
+  from = "/admin"
+  to = "/admin/"
+  status = 301
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin/:splat"
+  status = 200
