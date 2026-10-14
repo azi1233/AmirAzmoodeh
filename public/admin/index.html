@@ -74,14 +74,16 @@
 								"Popup opened: " + (hops.opened ? "yes" : "no") +
 									", initial postMessage ('authorizing:github') received: " + (hops.gotInitialPing ? "yes" : "no") +
 									" (elapsed ~" + since.toFixed(1) + "s). " +
-									"Check: popup retained window.opener? Did Netlify's /auth/done post back to this origin? Is there an origin allowlist issue?"
+									"Check: popup retained window.opener? Did Netlify's /auth/done post back to this origin? Origin allowlist or popup lifecycle issue."
 							);
 						} else if (reason === "final") {
 							fail(
 								"Netlify auth completed initial handshake but final result never arrived.",
 								"Initial ping received: yes, final authorization result (" +
 									"'authorization:<provider>:success:...' or error) not received in ~" + since.toFixed(1) + "s. " +
-									"Netlify may have succeeded/failed on GitHub side but the postMessage to the CMS tab was blocked (origin mismatch) or the popup closed abnormally."
+									"Likely cause: the popup (api.netlify.com/auth/done) ignores messages from the CMS because CMS origin (" +
+									(location.origin || "unknown") +
+									") is not in the popup's allowlist. To fix, serve /admin from an allowed origin (e.g. the Netlify auth site) so CMS origin matches what the popup accepts."
 							);
 						}
 					}, delay);
