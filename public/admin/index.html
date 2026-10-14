@@ -49,29 +49,54 @@
 		<script>
 			(function () {
 				var NETLIFY = "https://api.netlify.com";
-				var hops = { opened: false, calledBack: false, token: false };
+				var hops = { opened: false, gotInitialPing: false, gotFinalResult: false, success: false, errored: false, started: 0 };
 				var watchdog = null;
 				var panel = null;
+
+				function clearWatchdog() {
+					if (watchdog) {
+						clearTimeout(watchdog);
+						watchdog = null;
+					}
+				}
+
+				function startWatchdog(delay, reason) {
+					clearWatchdog();
+					watchdog = setTimeout(function () {
+						if (hops.errored || hops.success) {
+							clearWatchdog();
+							return;
+						}
+						var since = hops.started ? (Date.now() - hops.started) / 1000 : 0;
+						if (reason === "initial") {
+							fail(
+								"Netlify auth callback never reached the CMS tab.",
+								"Popup opened: " + (hops.opened ? "yes" : "no") +
+									", initial postMessage ('authorizing:github') received: " + (hops.gotInitialPing ? "yes" : "no") +
+									" (elapsed ~" + since.toFixed(1) + "s). " +
+									"Check: popup retained window.opener? Did Netlify's /auth/done post back to this origin? Is there an origin allowlist issue?"
+							);
+						} else if (reason === "final") {
+							fail(
+								"Netlify auth completed initial handshake but final result never arrived.",
+								"Initial ping received: yes, final authorization result (" +
+									"'authorization:<provider>:success:...' or error) not received in ~" + since.toFixed(1) + "s. " +
+									"Netlify may have succeeded/failed on GitHub side but the postMessage to the CMS tab was blocked (origin mismatch) or the popup closed abnormally."
+							);
+						}
+					}, delay);
+				}
 
 				// (a) Intercept ONLY Netlify's auth popup, and only to drop the
 				// window name. Every other window.open call is passed straight on.
 				var realOpen = window.open;
 				window.open = function (url) {
 					if (typeof url === "string" && url.indexOf(NETLIFY + "/auth") === 0) {
-						hops = { opened: true, calledBack: false, token: false };
+						hops = { opened: true, gotInitialPing: false, gotFinalResult: false, success: false, errored: false, started: Date.now() };
 						hidePanel();
 						console.log("[cms login] popup opened — fresh window, name dropped");
-						clearTimeout(watchdog);
-						// If Netlify never calls back, the opener link is dead. Say so
-						// instead of leaving an unexplained spinner on screen.
-						watchdog = setTimeout(function () {
-							if (!hops.calledBack) {
-								fail(
-									"The Netlify window never called back to this tab.",
-									"Close every popup window, allow popups for this site, then reload and try again."
-								);
-							}
-						}, 30000);
+						clearWatchdog();
+						startWatchdog(30000, "initial");
 						return realOpen.call(window, url, "", arguments[2]);
 					}
 					return realOpen.apply(window, arguments);
@@ -82,21 +107,32 @@
 				window.addEventListener(
 					"message",
 					function (event) {
-						if (event.origin !== NETLIFY) return;
+						if (hops.errored || hops.success) {
+							return;
+						}
+						if (event.origin !== NETLIFY) {
+							return;
+						}
 						var data = typeof event.data === "string" ? event.data : "";
 						if (data.indexOf("authorizing:") === 0) {
-							hops.calledBack = true;
-							clearTimeout(watchdog);
-							console.log("[cms login] hop 1 OK — Netlify called back, this tab replies");
-						} else if (data.indexOf("authorization:github:success:") === 0) {
-							hops.token = true;
-							clearTimeout(watchdog);
-							console.log("[cms login] hop 3 OK — token received");
-						} else if (data.indexOf("authorization:github:error:") === 0) {
-							clearTimeout(watchdog);
+							if (!hops.gotInitialPing) {
+								hops.gotInitialPing = true;
+								clearWatchdog();
+								console.log("[cms login] hop 1/2: initial ping from Netlify received; starting final-result watchdog");
+								startWatchdog(30000, "final");
+							}
+						} else if (data.indexOf("authorization:") === 0 && data.indexOf(":success:") !== -1) {
+							hops.gotFinalResult = true;
+							hops.success = true;
+							clearWatchdog();
+							console.log("[cms login] final: authorization success received (token not logged)");
+						} else if (data.indexOf("authorization:") === 0 && data.indexOf(":error:") !== -1) {
+							hops.gotFinalResult = true;
+							hops.errored = true;
+							clearWatchdog();
 							fail(
 								"GitHub refused the authorization.",
-								readError(data.slice("authorization:github:error:".length))
+								readError(data.slice(data.indexOf(":error:") + ":error:".length))
 							);
 						}
 					},
@@ -119,8 +155,10 @@
 				function fail(headline, detail) {
 					var steps = [
 						"Popup opened: " + (hops.opened ? "yes" : "no"),
-						"Netlify called back: " + (hops.calledBack ? "yes" : "no"),
-						"Token received: " + (hops.token ? "yes" : "no"),
+						"Initial ping ('authorizing:github') received: " + (hops.gotInitialPing ? "yes" : "no"),
+						"Final authorization result received: " + (hops.gotFinalResult ? "yes" : "no"),
+						"Authorization succeeded: " + (hops.success ? "yes" : "no"),
+						"Elapsed (s): " + (hops.started ? ((Date.now() - hops.started) / 1000).toFixed(1) : "0.0"),
 					];
 					showPanel(headline, detail, steps);
 				}
