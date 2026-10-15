@@ -136,9 +136,10 @@
 								"Netlify auth completed initial handshake but final result never arrived.",
 								"Initial ping received: yes, final authorization result (" +
 									"'authorization:<provider>:success:...' or error) not received in ~" + since.toFixed(1) + "s. " +
-									"Likely cause: the popup (api.netlify.com/auth/done) ignores messages from the CMS because CMS origin (" +
-									(location.origin || "unknown") +
-									") is not in the popup's allowlist. To fix, serve /admin from an allowed origin (e.g. the Netlify auth site) so CMS origin matches what the popup accepts."
+									"Observed only: this tab got the popup's initial message, but no concluding message followed. " +
+									"Possible causes, not verifiable from this tab alone: the popup never got Decap's echo reply; " +
+									"the popup closed or navigated away before answering; the concluding message was blocked or went elsewhere; " +
+									"the popup hit an error it did not report back. Popup-side console/network evidence is needed to tell these apart."
 							);
 						}
 					}, delay);
@@ -178,37 +179,45 @@
 				window.addEventListener(
 					"message",
 					function (event) {
-						if (hops.errored || hops.success) {
-							return;
-						}
 						var data = typeof event.data === "string" ? event.data : "";
+						// Observe ALWAYS — even after success/error — but never let
+						// a post-terminal event change authentication state,
+						// timers, or panels. Logging is read-only by construction:
+						// this function sends no messages and only assigns hops
+						// fields inside the `!settled` guards below.
+						var settled = hops.errored || hops.success;
+						var note = settled ? " [after terminal state; state unchanged]" : "";
 						if (event.origin !== NETLIFY) {
-							logEvent("message rejected (unexpected origin; ignored)", event);
+							logEvent("message rejected (unexpected origin; ignored)" + note, event);
 							return;
 						}
 						if (data.indexOf("authorizing:") === 0) {
-							logEvent("initial ping received (Decap echoes natively; diagnostics only observe)", event);
-							if (!hops.gotInitialPing) {
+							logEvent("initial ping received (Decap echoes natively; diagnostics only observe)" + note, event);
+							if (!settled && !hops.gotInitialPing) {
 								hops.gotInitialPing = true;
 								clearWatchdog();
 								startWatchdog(FINAL_TIMEOUT_MS, "final");
 							}
 						} else if (data.indexOf("authorization:") === 0 && data.indexOf(":success:") !== -1) {
-							logEvent("final authorization success received (payload not logged)", event);
-							hops.gotFinalResult = true;
-							hops.success = true;
-							clearWatchdog();
+							logEvent("final authorization success received (payload not logged)" + note, event);
+							if (!settled) {
+								hops.gotFinalResult = true;
+								hops.success = true;
+								clearWatchdog();
+							}
 						} else if (data.indexOf("authorization:") === 0 && data.indexOf(":error:") !== -1) {
-							logEvent("final authorization error received (detail sanitized below)", event);
-							hops.gotFinalResult = true;
-							hops.errored = true;
-							clearWatchdog();
-							fail(
-								"GitHub refused the authorization.",
-								readError(data.slice(data.indexOf(":error:") + ":error:".length))
-							);
+							logEvent("final authorization error received (detail sanitized below)" + note, event);
+							if (!settled) {
+								hops.gotFinalResult = true;
+								hops.errored = true;
+								clearWatchdog();
+								fail(
+									"GitHub refused the authorization.",
+									readError(data.slice(data.indexOf(":error:") + ":error:".length))
+								);
+							}
 						} else {
-							logEvent("unrecognized message from auth origin (ignored)", event);
+							logEvent("unrecognized message from auth origin (ignored)" + note, event);
 						}
 					},
 					false
