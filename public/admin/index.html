@@ -32,6 +32,12 @@
 			  2. this tab → popup   "authorizing:github"          (Decap's echo)
 			  3. popup  → this tab   "authorization:github:success:{token}"
 
+			Verified against the served bundle (decap-cms-app 3.17.1): Decap
+			registers its own handshake listener and performs hop 2 itself via
+			`authWindow.postMessage(data, origin)`. This helper therefore NEVER
+			sends a message — it only observes. Adding a second echo here would
+			duplicate/conflict with Decap's native protocol.
+
 			Two failure modes are handled here.
 
 			a) Decap opens the popup with a FIXED WINDOW NAME:
@@ -45,6 +51,13 @@
 			b) If the chain breaks for any other reason, Decap gives no message at
 			   all. The panel below reports which hop arrived, in the page, so no
 			   DevTools round-trip is needed to find out what happened.
+
+			Logging: every window "message" event is logged to the console with a
+			"[cms login]" prefix — including events rejected by the origin check,
+			which the old code dropped silently. Only safe metadata is logged
+			(elapsed time, origin, whether event.source is the tracked popup,
+			data type, message category). Message bodies, tokens, codes, state
+			values and secrets are NEVER logged.
 		-->
 		<script>
 			(function () {
@@ -57,6 +70,8 @@
 				var INITIAL_TIMEOUT_MS = 5 * 60 * 1000;
 				var FINAL_TIMEOUT_MS = 60 * 1000;
 				var hops = { opened: false, gotInitialPing: false, gotFinalResult: false, success: false, errored: false, started: 0 };
+				var authPopup = null;
+				var scriptT0 = Date.now();
 				var watchdog = null;
 				var panel = null;
 
@@ -65,6 +80,38 @@
 						clearTimeout(watchdog);
 						watchdog = null;
 					}
+				}
+
+				function elapsed() {
+					var t0 = hops.started || scriptT0;
+					return ((Date.now() - t0) / 1000).toFixed(1);
+				}
+
+				// Classify a message WITHOUT logging or returning its body: only
+				// the shape is reported, never tokens, codes, state or secrets.
+				function categoryOf(data) {
+					if (typeof data !== "string") return "non-string";
+					if (data.indexOf("authorizing:") === 0) return "authorizing-ping";
+					if (data.indexOf("authorization:") === 0 && data.indexOf(":success:") !== -1) {
+						return "authorization-success";
+					}
+					if (data.indexOf("authorization:") === 0 && data.indexOf(":error:") !== -1) {
+						return "authorization-error";
+					}
+					return "unrecognized-string";
+				}
+
+				// One structured line per observed message event. event.source is
+				// compared by reference only — no cross-origin property is read.
+				function logEvent(note, event) {
+					var sourceIsPopup = event.source != null && event.source === authPopup;
+					console.log(
+						"[cms login +" + elapsed() + "s] " + note +
+							" origin=" + event.origin +
+							" sourceIsPopup=" + sourceIsPopup +
+							" dataType=" + typeof event.data +
+							" category=" + categoryOf(event.data)
+					);
 				}
 
 				function startWatchdog(delay, reason) {
@@ -105,47 +152,54 @@
 					if (typeof url === "string" && url.indexOf(NETLIFY + "/auth") === 0) {
 						hops = { opened: true, gotInitialPing: false, gotFinalResult: false, success: false, errored: false, started: Date.now() };
 						hidePanel();
-						console.log("[cms login] popup opened — fresh window, name dropped");
 						clearWatchdog();
 						popup = realOpen.call(window, url, "", arguments[2]);
+						authPopup = popup;
 						if (!popup) {
+							console.log("[cms login +" + elapsed() + "s] popup blocked by the browser (window.open returned null)");
 							fail(
 								"The login popup was blocked by the browser.",
 								"Allow popups for this site, then click Login with GitHub again. Nothing was sent anywhere."
 							);
 							return popup;
 						}
+						console.log("[cms login +" + elapsed() + "s] popup opened — fresh window, name dropped");
 						startWatchdog(INITIAL_TIMEOUT_MS, "initial");
 						return popup;
 					}
 					return realOpen.apply(window, arguments);
 				};
 
-				// (b) Record the hops. Every message Decap accepts comes from
-				// api.netlify.com and nothing else, so anything else is ignored.
+				// (b) Observe the hops. This listener NEVER replies — Decap's own
+				// handshake listener performs the hop-2 echo natively. Every
+				// message Decap accepts comes from api.netlify.com; anything else
+				// is ignored by the handshake but still logged here as metadata,
+				// so a rejected origin is visible instead of silent.
 				window.addEventListener(
 					"message",
 					function (event) {
 						if (hops.errored || hops.success) {
 							return;
 						}
+						var data = typeof event.data === "string" ? event.data : "";
 						if (event.origin !== NETLIFY) {
+							logEvent("message rejected (unexpected origin; ignored)", event);
 							return;
 						}
-						var data = typeof event.data === "string" ? event.data : "";
 						if (data.indexOf("authorizing:") === 0) {
+							logEvent("initial ping received (Decap echoes natively; diagnostics only observe)", event);
 							if (!hops.gotInitialPing) {
 								hops.gotInitialPing = true;
 								clearWatchdog();
-								console.log("[cms login] hop 1/2: initial ping from Netlify received; starting final-result watchdog");
 								startWatchdog(FINAL_TIMEOUT_MS, "final");
 							}
 						} else if (data.indexOf("authorization:") === 0 && data.indexOf(":success:") !== -1) {
+							logEvent("final authorization success received (payload not logged)", event);
 							hops.gotFinalResult = true;
 							hops.success = true;
 							clearWatchdog();
-							console.log("[cms login] final: authorization success received (token not logged)");
 						} else if (data.indexOf("authorization:") === 0 && data.indexOf(":error:") !== -1) {
+							logEvent("final authorization error received (detail sanitized below)", event);
 							hops.gotFinalResult = true;
 							hops.errored = true;
 							clearWatchdog();
@@ -153,6 +207,8 @@
 								"GitHub refused the authorization.",
 								readError(data.slice(data.indexOf(":error:") + ":error:".length))
 							);
+						} else {
+							logEvent("unrecognized message from auth origin (ignored)", event);
 						}
 					},
 					false
