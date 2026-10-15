@@ -24,13 +24,20 @@ const post = defineCollection({
 			publishDate: z
 				.string()
 				.or(z.date())
-				.transform((val) => new Date(val)),
+				.transform((val) => new Date(val))
+				.refine((date) => !Number.isNaN(date.getTime()), {
+					message: "Invalid publishDate: expected an ISO date string or Date",
+				}),
 			tags: z.array(z.string()).default([]).transform(removeDupsAndLowerCase),
 			title: z.string().max(120),
 			updatedDate: z
 				.string()
+				.or(z.date())
 				.optional()
-				.transform((str) => (str ? new Date(str) : undefined)),
+				.transform((val) => (val === undefined ? undefined : new Date(val)))
+				.refine((date) => date === undefined || !Number.isNaN(date.getTime()), {
+					message: "Invalid updatedDate: expected an ISO date string or Date",
+				}),
 		}),
 });
 
