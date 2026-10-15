@@ -1,19 +1,18 @@
 ---
-title: "Hello, world"
+title: Hello, world
 publishDate: 2026-03-01
-description: "A first post — and a quick tour of what the writing template can render."
-tags: [ intro, demo, guide ]
+description: A first post — I set up this static website finally!
+tags: []
 ---
-
-Welcome. This is the first post in your new blog. Replace it (or delete it) when you write your first real post.
+This is guide from the template i used
 
 ## Headings, lists, links
 
 The body uses Newsreader for serif text and JetBrains Mono for code. Lists work the way you'd expect:
 
-- A bullet
-- Another bullet
-- Yet another
+* A bullet
+* Another bullet
+* Yet another
 
 Numbered lists too:
 
@@ -45,7 +44,7 @@ pnpm dev
 [KaTeX](https://katex.org) is wired up. Inline like $E = mc^2$ and as a display:
 
 $$
-\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}
+\int_{-\infty}^{\infty} e^{-x^2},dx = \sqrt{\pi}
 $$
 
 ## Quotes & emphasis
@@ -58,7 +57,7 @@ You can use *emphasis* and **strong** the usual way.
 
 ## What's next
 
-- Edit `src/site.config.ts` with your name, profile, and (optionally) Giscus and analytics IDs.
-- Replace `src/content/page/about.md` with your own bio.
-- Drop new posts into `src/content/post/` — the filename becomes the URL slug.
-- See the README for full setup and customization steps.
+* Edit `src/site.config.ts` with your name, profile, and (optionally) Giscus and analytics IDs.
+* Replace `src/content/page/about.md` with your own bio.
+* Drop new posts into `src/content/post/` — the filename becomes the URL slug.
+* See the README for full setup and customization steps.
