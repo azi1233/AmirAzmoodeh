@@ -14,7 +14,13 @@ const post = defineCollection({
 		z.object({
 			coverImage: z
 				.object({
-					alt: z.string(),
+					// Alt text is optional: the CMS cover-image fields are all
+					// `required: false` (Decap validates inner object fields even
+					// when the object is empty, so they cannot be required there),
+					// which means the CMS can save `src` without `alt`. An empty
+					// alt is valid HTML (decorative image); `src` stays required
+					// since an image without a source cannot render.
+					alt: z.string().optional().default(""),
 					src: z.string().or(image()),
 				})
 				.optional(),

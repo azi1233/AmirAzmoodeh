@@ -89,7 +89,7 @@ collections:
         collapsed: true
         fields:
           - { label: "Image", name: "src", widget: "image", required: false, choose_url: false }
-          - { label: "Alt text", name: "alt", widget: "string", required: false }
+          - { label: "Alt text", name: "alt", widget: "string", required: false, hint: "Describe the image for screen readers (e.g. its subject and setting). Leave empty only if purely decorative." }
       - label: "OG Image (optional override)"
         name: "ogImage"
         widget: "image"
