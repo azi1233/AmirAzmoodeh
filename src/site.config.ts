@@ -26,13 +26,14 @@ export const siteConfig: SiteConfig = {
 		jobTitle: "Network Engineer",
 		avatar: "/avatar.png",
 	},
-	// Uncomment & fill in to enable Giscus comments on every post.
-	// comments: {
-	// 	repo: "your-handle/your-repo",
-	// 	repoId: "...",
-	// 	category: "General",
-	// 	categoryId: "...",
-	// },
+	// Giscus comments (GitHub-login only) on every post.
+	// Values from https://giscus.app for azi1233/AmirAzmoodeh.
+	comments: {
+		repo: "azi1233/AmirAzmoodeh",
+		repoId: "R_kgDOTGQzww",
+		category: "Announcements",
+		categoryId: "DIC_kwDOTGQzw84DIjZ5",
+	},
 	// Uncomment to enable analytics. Both providers load via Partytown.
 	// analytics: {
 	// 	googleAnalyticsId: "G-XXXXXXX",
