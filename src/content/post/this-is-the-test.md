@@ -5,6 +5,6 @@ updatedDate: 2026-10-15T19:26:00.000+03:30
 description: |
   Hey, whats up
 tags: []
-draft: false
+draft: true
 ---
 this is test
