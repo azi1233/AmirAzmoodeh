@@ -4,7 +4,7 @@ publishDate: 2026-03-01
 description: A first post — I set up this static website finally!
 tags: []
 ---
-This is guide from the template i used
+This is a guide from the template I used.
 
 ## Headings, lists, links
 
