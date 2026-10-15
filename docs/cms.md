@@ -326,8 +326,14 @@ Two things this page does for you behind the scenes:
   one, and a reused window has no link back to your tab — so step 1 and step 2
   go nowhere while Netlify still cheerfully says "Authorized". Dropping the
   window name removes that whole class of bug.
-- **It waits 30 seconds.** If step 1 never arrives, you get the box instead of an
-  unexplained spinner.
+- **It gives you time to type your password.** The first message only arrives
+  after you finish logging in on GitHub, so the page waits **5 minutes** for
+  step 1 — enough for a password plus a 2FA code. If step 1 never arrives, you
+  get the box instead of an unexplained spinner. (If the browser blocks the
+  popup outright, the box appears immediately.)
+- **It keeps watching after step 1.** The final hop is fully automatic, so the
+  page waits **60 seconds** for step 3 after step 1 lands. If the token never
+  arrives, the box names the broken step.
 
 Everything it logs also appears in the browser console with the prefix
 `[cms login]`, if you prefer to look there.

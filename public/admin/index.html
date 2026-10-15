@@ -49,6 +49,13 @@
 		<script>
 			(function () {
 				var NETLIFY = "https://api.netlify.com";
+				// The initial ping only arrives AFTER the user finishes typing
+				// their GitHub username/password (plus 2FA) in the popup, so this
+				// window must be generous. The final hop is fully automatic, so it
+				// stays short — a missing final result means a broken handshake,
+				// not a slow typist.
+				var INITIAL_TIMEOUT_MS = 5 * 60 * 1000;
+				var FINAL_TIMEOUT_MS = 60 * 1000;
 				var hops = { opened: false, gotInitialPing: false, gotFinalResult: false, success: false, errored: false, started: 0 };
 				var watchdog = null;
 				var panel = null;
@@ -74,7 +81,8 @@
 								"Popup opened: " + (hops.opened ? "yes" : "no") +
 									", initial postMessage ('authorizing:github') received: " + (hops.gotInitialPing ? "yes" : "no") +
 									" (elapsed ~" + since.toFixed(1) + "s). " +
-									"Check: popup retained window.opener? Did Netlify's /auth/done post back to this origin? Origin allowlist or popup lifecycle issue."
+									"If you were still typing your GitHub password when this appeared, close the popup and click Login again — nothing was sent anywhere. " +
+									"Otherwise check: popup retained window.opener? Did Netlify's /auth/done post back to this origin? Origin allowlist or popup lifecycle issue."
 							);
 						} else if (reason === "final") {
 							fail(
@@ -93,13 +101,22 @@
 				// window name. Every other window.open call is passed straight on.
 				var realOpen = window.open;
 				window.open = function (url) {
+					var popup;
 					if (typeof url === "string" && url.indexOf(NETLIFY + "/auth") === 0) {
 						hops = { opened: true, gotInitialPing: false, gotFinalResult: false, success: false, errored: false, started: Date.now() };
 						hidePanel();
 						console.log("[cms login] popup opened — fresh window, name dropped");
 						clearWatchdog();
-						startWatchdog(30000, "initial");
-						return realOpen.call(window, url, "", arguments[2]);
+						popup = realOpen.call(window, url, "", arguments[2]);
+						if (!popup) {
+							fail(
+								"The login popup was blocked by the browser.",
+								"Allow popups for this site, then click Login with GitHub again. Nothing was sent anywhere."
+							);
+							return popup;
+						}
+						startWatchdog(INITIAL_TIMEOUT_MS, "initial");
+						return popup;
 					}
 					return realOpen.apply(window, arguments);
 				};
@@ -121,7 +138,7 @@
 								hops.gotInitialPing = true;
 								clearWatchdog();
 								console.log("[cms login] hop 1/2: initial ping from Netlify received; starting final-result watchdog");
-								startWatchdog(30000, "final");
+								startWatchdog(FINAL_TIMEOUT_MS, "final");
 							}
 						} else if (data.indexOf("authorization:") === 0 && data.indexOf(":success:") !== -1) {
 							hops.gotFinalResult = true;
