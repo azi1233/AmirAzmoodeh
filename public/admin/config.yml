@@ -1,39 +1,21 @@
 # Decap CMS configuration — https://decapcms.org/docs/
 #
-# Behind "Login with GitHub" this site uses Netlify's free OAuth proxy
-# (https://api.netlify.com). The site itself stays on GitHub Pages — only the
-# OAuth handshake goes through Netlify.
+# Login uses Decap Turbo ("Login with Turbo"). The Turbo site dashboard holds
+# the GitHub repository/branch connection; `turbo_site_id` below is the only
+# hand-set auth value. There is no Netlify OAuth proxy and no GitHub OAuth app
+# involved in this flow, so no Netlify-specific keys belong in this block.
+# Docs: https://decapcms.org/docs/turbo-connecting-a-site/
 #
-# MANUAL SETUP (completed for this site — kept as a record):
-#   1. GitHub OAuth App   — Settings → Developer settings → OAuth Apps → New
-#      OAuth App. Authorization callback URL MUST be:
-#          https://api.netlify.com/auth/done
-#      Copy the Client ID and generate a Client Secret afterwards.
-#   2. Netlify site (used only as the auth relay) — app.netlify.com → Add new
-#      site (any blank site). Set a Site name, e.g. "amirmoodeh-cms-auth".
-#      Then: Site configuration → Access & security → OAuth → Install provider
-#      → GitHub → paste the Client ID + Client Secret.
-#   3. Copy that site's "Project ID" (site settings, labelled Site ID in the
-#      API) and paste it below in `site_domain`.
-#
-# ⚠ THE KEY IS `site_domain`, NOT `site_id` — this is a trap.
-#   Decap's login page reads only `backend.site_domain`. The shipped
-#   decap-cms.js contains ZERO references to `backend.site_id`, so a `site_id:`
-#   key is silently ignored. Its helper then falls back to the browser's own
-#   hostname, producing this request:
-#       https://api.netlify.com/auth?provider=github
-#         &site_id=azi1233.github.io&scope=repo
-#   which Netlify rejects with a bare "Not Found". The misleading part: the
-#   `site_domain` NAME takes a Netlify Project ID (a UUID) as its VALUE — the
-#   name is a leftover in Decap's code, not a hint about the format.
+# NOTE: `repo` is intentionally absent here. For turbo-github the repository on
+# the Turbo site row is authoritative and any local `repo` value is ignored,
+# so a stale copy here would only mislead (it is what produces
+# "requested repo does not match"). Change the repo in the Turbo dashboard.
+# `branch`, if set, overrides the site row; otherwise the site row wins.
 
 backend:
-  name: github
-  repo: azi1233/AmirAzmoodeh
+  name: turbo-github
+  turbo_site_id: "b77473e7-6386-4683-8277-5755b3856334"
   branch: main
-  base_url: https://api.netlify.com
-  auth_endpoint: auth
-  site_domain: "66b4f6f7-4875-4815-bfa3-3242fa5b39f9"
 
 # Editorial workflow is intentionally OFF. With the "github" backend it would
 # funnel every post through a GitHub branch + pull request (saving creates a PR,
